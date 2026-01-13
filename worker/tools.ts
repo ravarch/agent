@@ -3,7 +3,7 @@ import puppeteer from "@cloudflare/puppeteer";
 import { Agent } from "agents";
 import { tool } from "ai";
 
-// Shared Environment Definition
+// 1. Shared Environment Definition
 export interface Env {
   AI: any;
   BROWSER: any; 
@@ -11,10 +11,10 @@ export interface Env {
   VECTOR_DB: VectorizeIndex;
   RESEARCH_WORKFLOW: Workflow;
   SuperAgent: DurableObjectNamespace; 
-  AI_GATEWAY_ID?: string;
+  AI_GATEWAY_ID: string;
 }
 
-export const getTools = (env: Env, agent: any, connectionId: string) => {
+export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
   return {
     // Tool 1: Web Search
     web_search: tool({
@@ -22,6 +22,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
+      // Remove explicit type annotation to allow Zod inference
       execute: async ({ query }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
@@ -71,8 +72,9 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
         topic: z.string().describe("The research topic"),
       }),
       execute: async ({ topic }) => {
-        // Access ID safely via any cast as Agent type might hide state
-        const agentId = agent.state?.id?.toString() || "unknown";
+        // Access ID safely via casting, as the Agent SDK type might hide the underlying state
+        // @ts-ignore
+        const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
 
         const run = await env.RESEARCH_WORKFLOW.create({
           params: { 
