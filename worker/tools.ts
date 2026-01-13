@@ -1,7 +1,6 @@
 import { z } from "zod";
 import puppeteer from "@cloudflare/puppeteer";
 import { tool } from "ai";
-// Removed unused import: import { env } from "cloudflare:workers";
 
 // 1. Shared Environment Definition
 export interface Env {
@@ -19,7 +18,6 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 1: Web Search
     web_search: tool({
       description: "Search the web for real-time information.",
-      // Removed 'as any' to restore proper type inference
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
@@ -36,7 +34,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
           return `Search failed: ${(error as Error).message}`;
         }
       },
-    }),
+    } as any),
 
     // Tool 2: Image Generation
     generate_image: tool({
@@ -49,7 +47,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
         const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
         return `![Generated Image](data:image/jpeg;base64,${response.image})`;
       },
-    }),
+    } as any),
 
     // Tool 3: File Reader
     read_file: tool({
@@ -63,7 +61,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
         const text = await object.text();
         return `File Content: ${text.substring(0, 8000)}`;
       },
-    }),
+    } as any),
 
     // Tool 4: Workflow Trigger
     start_deep_research: tool({
@@ -84,6 +82,6 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
         });
         return `Started Research Workflow (ID: ${run.id}). I will notify you when done.`;
       },
-    }),
+    } as any),
   };
 };
