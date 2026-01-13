@@ -1,7 +1,7 @@
 import { z } from "zod";
 import puppeteer from "@cloudflare/puppeteer";
 import { tool } from "ai";
-import { env } from "cloudflare:workers";
+// Removed unused import: import { env } from "cloudflare:workers";
 
 // 1. Shared Environment Definition
 export interface Env {
@@ -19,10 +19,10 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 1: Web Search
     web_search: tool({
       description: "Search the web for real-time information.",
-      // Cast to any to prevent Zod version mismatches causing overload errors
+      // Removed 'as any' to allow TS to infer the type for 'execute'
       parameters: z.object({
         query: z.string().describe("The search query"),
-      }) as any,
+      }),
       execute: async ({ query }: { query: string }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
@@ -43,7 +43,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       description: "Generate an image based on a prompt.",
       parameters: z.object({
         prompt: z.string().describe("Visual description of the image"),
-      }) as any,
+      }),
       execute: async ({ prompt }: { prompt: string }) => {
         const inputs = { prompt, steps: 4 };
         const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
@@ -56,7 +56,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       description: "Read the full content of a specific file from the sandbox.",
       parameters: z.object({
         filename: z.string().describe("The exact name of the file to read"),
-      }) as any,
+      }),
       execute: async ({ filename }: { filename: string }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
@@ -70,7 +70,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       description: "Start a long-running deep research workflow.",
       parameters: z.object({
         topic: z.string().describe("The research topic"),
-      }) as any,
+      }),
       execute: async ({ topic }: { topic: string }) => {
         // Safe ID access
         const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
