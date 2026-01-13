@@ -6,7 +6,16 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./worker/index");
 	}
 	interface Env {
-	}
+  SuperAgent: DurableObjectNamespace;
+  AI: Ai;
+  VECTOR_DB: Vectorize;
+  FILES_BUCKET: R2Bucket;
+  BROWSER: Fetcher;
+  RESEARCH_WORKFLOW: Workflow;
+  
+  // Secrets
+  AI_GATEWAY_ID: string;
+}
 }
 interface Env extends Cloudflare.Env {}
 
