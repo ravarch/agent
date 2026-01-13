@@ -1,46 +1,54 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "agent",
-  "main": "src/index.ts",
+  "main": "worker/index.ts",
   "compatibility_date": "2025-02-04",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": { "not_found_handling": "single-page-application" },
-  "observability": { "enabled": true },
-  
-  // 1. The Super Agent
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // 1. The Super Agent Durable Object
   "durable_objects": {
     "bindings": [
-      { "name": "SuperAgent", "class_name": "SuperAgent" }
+      {
+        "name": "SuperAgent",
+        "class_name": "SuperAgent"
+      }
     ]
   },
   "migrations": [
     {
       "tag": "v1",
       "new_classes": ["SuperAgent"],
-      "new_sqlite_classes": ["SuperAgent"] // Enable SQL state
+      "new_sqlite_classes": ["SuperAgent"]
     }
   ],
-
-  // 2. AI & Gateway
+  // 2. AI Binding
   "ai": {
     "binding": "AI"
   },
-
-  // 3. Long-term Memory (RAG)
+  // 3. Vectorize (Long-term Memory)
   "vectorize": [
-    { "binding": "VECTOR_DB", "index_name": "agent-memory" }
+    {
+      "binding": "VECTOR_DB",
+      "index_name": "agent-memory"
+    }
   ],
-
-  // 4. File Storage (Sandbox)
+  // 4. R2 Bucket (File Sandbox)
   "r2_buckets": [
-    { "binding": "FILES_BUCKET", "bucket_name": "agent-sandbox" }
+    {
+      "binding": "FILES_BUCKET",
+      "bucket_name": "agent-artifacts"
+    }
   ],
-
-  // 5. Web Browsing
+  // 5. Browser Rendering (Web Browsing)
   "browser": {
     "binding": "BROWSER"
   },
-
   // 6. Deep Research Workflow
   "workflows": [
     {
