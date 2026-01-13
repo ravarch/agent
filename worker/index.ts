@@ -21,23 +21,27 @@ export default {
         httpMetadata: { contentType: file.type },
       });
 
-      // Index in Vectorize (Simple Chunking)
+      // Index in Vectorize
       if (file.type.includes("text") || file.name.endsWith(".md")) {
-        const text = await file.text();
-        const chunks = text.match(/[\s\S]{1,500}/g) || [];
+        try {
+          const text = await file.text();
+          const chunks = text.match(/[\s\S]{1,500}/g) || [];
 
-        const vectors = [];
-        for (let i = 0; i < Math.min(chunks.length, 20); i++) {
-           const chunk = chunks[i];
-           const embedding: any = await env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [chunk] });
-           const values = embedding.data ? embedding.data[0] : embedding[0];
-           vectors.push({
-             id: `${file.name}-${i}`,
-             values: values,
-             metadata: { filename: file.name, text: chunk }
-           });
+          const vectors = [];
+          for (let i = 0; i < Math.min(chunks.length, 20); i++) {
+             const chunk = chunks[i];
+             const embedding: any = await env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [chunk] });
+             const values = embedding.data ? embedding.data[0] : embedding[0];
+             vectors.push({
+               id: `${file.name}-${i}`,
+               values: values,
+               metadata: { filename: file.name, text: chunk }
+             });
+          }
+          await env.VECTOR_DB.upsert(vectors);
+        } catch (e) {
+          console.error("Vectorize Error:", e);
         }
-        await env.VECTOR_DB.upsert(vectors);
       }
 
       return Response.json({ success: true, filename: file.name });
