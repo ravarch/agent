@@ -3,21 +3,21 @@ import puppeteer from "@cloudflare/puppeteer";
 import { Agent } from "agents";
 import { tool } from "ai";
 
-// Define the shape of our Environment
+// Shared Environment Definition
 export interface Env {
   AI: any;
-  BROWSER: any;
+  BROWSER: any; // Puppeteer Browser Binding
   FILES_BUCKET: R2Bucket;
   VECTOR_DB: VectorizeIndex;
   RESEARCH_WORKFLOW: Workflow;
-  SuperAgent: DurableObjectNamespace; // Added missing binding
+  SuperAgent: DurableObjectNamespace; // Needed for Workflow -> Agent communication
 }
 
 export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
   return {
-    // Tool 1: Real-time Web Search & Browsing
+    // 1. Web Search
     web_search: tool({
-      description: "Search the web for real-time information or facts.",
+      description: "Search the web for real-time information.",
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
@@ -25,20 +25,19 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
-          
           await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
           
+          // Basic extraction
           const text = await page.$eval("body", (el) => el.innerText);
           await browser.close();
-          
-          return `Search Results for "${query}":\n${text.substring(0, 2000)}...`;
+          return `Search Results: ${text.substring(0, 2000)}...`;
         } catch (error) {
-          return `Error browsing web: ${(error as Error).message}`;
+          return `Search failed: ${(error as Error).message}`;
         }
       },
     }),
 
-    // Tool 2: Image Generation
+    // 2. Image Generation
     generate_image: tool({
       description: "Generate an image based on a prompt.",
       parameters: z.object({
@@ -51,7 +50,7 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       },
     }),
 
-    // Tool 3: Read User Files (RAG / Analysis)
+    // 3. File Reader
     read_file: tool({
       description: "Read the full content of a specific file from the sandbox.",
       parameters: z.object({
@@ -59,15 +58,15 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       }),
       execute: async ({ filename }: { filename: string }) => {
         const object = await env.FILES_BUCKET.get(filename);
-        if (!object) return "File not found.";
+        if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
-        return `File Content (${filename}):\n${text.substring(0, 10000)}`;
+        return `File Content: ${text.substring(0, 8000)}`;
       },
     }),
 
-    // Tool 4: Deep Research Workflow (Async)
+    // 4. Workflow Trigger
     start_deep_research: tool({
-      description: "Start a long-running, deep research workflow on a complex topic.",
+      description: "Start a long-running deep research workflow.",
       parameters: z.object({
         topic: z.string().describe("The research topic"),
       }),
@@ -79,7 +78,7 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
             connectionId 
           }
         });
-        return `Started Deep Research Workflow (ID: ${run.id}). I will notify you when the report is ready.`;
+        return `Started Research Workflow (ID: ${run.id}). I will notify you when done.`;
       },
     }),
   };
