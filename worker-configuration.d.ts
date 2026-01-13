@@ -6,7 +6,6 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./worker/index");
 	}
 	interface Env {
-  Suinterface Env {
   AI: any;
   BROWSER: any; 
   FILES_BUCKET: R2Bucket;
