@@ -19,7 +19,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 1: Web Search
     web_search: tool({
       description: "Search the web for real-time information.",
-      // Removed 'as any' to allow TS to infer the type for 'execute'
+      // Removed 'as any' to restore proper type inference
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
