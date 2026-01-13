@@ -3,16 +3,15 @@ import puppeteer from "@cloudflare/puppeteer";
 import { Agent } from "agents";
 import { tool } from "ai";
 
-// 1. Shared Environment Definition
+// 1. Shared Environment Definition matching worker-configuration.d.ts
 export interface Env {
   AI: any;
   BROWSER: any; 
   FILES_BUCKET: R2Bucket;
-  VECTOR_DB: VectorizeIndex;
+  VECTOR_DB: Vectorize; // Changed from VectorizeIndex to Vectorize
   RESEARCH_WORKFLOW: Workflow;
-  // Required by agents SDK and workflow
   SuperAgent: DurableObjectNamespace; 
-  AI_GATEWAY_ID?: string; // Added to satisfy Cloudflare.Env constraint
+  AI_GATEWAY_ID: string;
 }
 
 export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
@@ -23,7 +22,7 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
-      execute: async ({ query }) => {
+      execute: async ({ query }: { query: string }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
@@ -44,7 +43,7 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       parameters: z.object({
         prompt: z.string().describe("Visual description of the image"),
       }),
-      execute: async ({ prompt }) => {
+      execute: async ({ prompt }: { prompt: string }) => {
         const inputs = { prompt, steps: 4 };
         const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
         return `![Generated Image](data:image/jpeg;base64,${response.image})`;
@@ -57,7 +56,7 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       parameters: z.object({
         filename: z.string().describe("The exact name of the file to read"),
       }),
-      execute: async ({ filename }) => {
+      execute: async ({ filename }: { filename: string }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
@@ -71,9 +70,9 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       parameters: z.object({
         topic: z.string().describe("The research topic"),
       }),
-      execute: async ({ topic }) => {
-        // Fix: Use agent.state.id for Durable Objects
-        // @ts-ignore - 'state' exists on DurableObject, even if Agent type hides it
+      execute: async ({ topic }: { topic: string }) => {
+        // Use standard Durable Object state id if available, otherwise agent.id
+        // @ts-ignore
         const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
 
         const run = await env.RESEARCH_WORKFLOW.create({
