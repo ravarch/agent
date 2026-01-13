@@ -6,7 +6,7 @@ import { ResearchWorkflow } from "./workflow";
 export { SuperAgent, ResearchWorkflow };
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
 
     // --- API: File Upload to Sandbox (R2) ---
