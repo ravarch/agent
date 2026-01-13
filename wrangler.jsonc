@@ -34,7 +34,7 @@
   "vectorize": [
     {
       "binding": "VECTOR_DB",
-      "index_name": "agent-memory"
+      "index_name": "ai-search-agent"
     }
   ],
   // 4. R2 Bucket (File Sandbox)
