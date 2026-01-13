@@ -15,7 +15,8 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
       const response = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
         messages: [{ role: "user", content: `Create a 3-step research plan for: ${prompt}` }]
       });
-      return response.response; // Simplified for brevity
+      // @ts-expect-error - AI output type mismatch workaround
+      return (response as any).response; 
     });
 
     // Step 2: Check R2 Sandbox for relevant files
@@ -37,7 +38,8 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
                 { role: "user", content: `Plan: ${plan}\n\nFile Analysis: ${fileAnalysis}` }
             ]
         });
-        return response.response;
+        // @ts-expect-error - AI output type mismatch workaround
+        return (response as any).response;
     });
 
     // Note: In a real app, you would use the Agent ID to send this back to the specific WebSocket connection.
