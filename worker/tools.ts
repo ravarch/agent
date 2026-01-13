@@ -1,6 +1,5 @@
 import { z } from "zod";
 import puppeteer from "@cloudflare/puppeteer";
-import { Agent } from "agents";
 import { tool } from "ai";
 
 // 1. Shared Environment Definition
@@ -8,37 +7,22 @@ export interface Env {
   AI: any;
   BROWSER: any; 
   FILES_BUCKET: R2Bucket;
-  // Use 'any' to bypass strict SDK constraint checks for Vectorize
-  VECTOR_DB: any; 
+  VECTOR_DB: any; // 'any' to bypass strict SDK constraints
   RESEARCH_WORKFLOW: Workflow;
   SuperAgent: DurableObjectNamespace; 
   AI_GATEWAY_ID: string;
 }
-
-// 2. Define Schemas Explicitly to satisfy TypeScript Inference
-const SearchSchema = z.object({
-  query: z.string().describe("The search query"),
-});
-
-const ImageSchema = z.object({
-  prompt: z.string().describe("Visual description of the image"),
-});
-
-const FileSchema = z.object({
-  filename: z.string().describe("The exact name of the file to read"),
-});
-
-const ResearchSchema = z.object({
-  topic: z.string().describe("The research topic"),
-});
 
 export const getTools = (env: Env, agent: any, connectionId: string) => {
   return {
     // Tool 1: Web Search
     web_search: tool({
       description: "Search the web for real-time information.",
-      parameters: SearchSchema,
-      execute: async ({ query }: z.infer<typeof SearchSchema>) => {
+      // Cast to any to prevent Zod version mismatches causing overload errors
+      parameters: z.object({
+        query: z.string().describe("The search query"),
+      }) as any,
+      execute: async ({ query }: { query: string }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
@@ -56,8 +40,10 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 2: Image Generation
     generate_image: tool({
       description: "Generate an image based on a prompt.",
-      parameters: ImageSchema,
-      execute: async ({ prompt }: z.infer<typeof ImageSchema>) => {
+      parameters: z.object({
+        prompt: z.string().describe("Visual description of the image"),
+      }) as any,
+      execute: async ({ prompt }: { prompt: string }) => {
         const inputs = { prompt, steps: 4 };
         const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
         return `![Generated Image](data:image/jpeg;base64,${response.image})`;
@@ -67,8 +53,10 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 3: File Reader
     read_file: tool({
       description: "Read the full content of a specific file from the sandbox.",
-      parameters: FileSchema,
-      execute: async ({ filename }: z.infer<typeof FileSchema>) => {
+      parameters: z.object({
+        filename: z.string().describe("The exact name of the file to read"),
+      }) as any,
+      execute: async ({ filename }: { filename: string }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
@@ -79,8 +67,10 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
     // Tool 4: Workflow Trigger
     start_deep_research: tool({
       description: "Start a long-running deep research workflow.",
-      parameters: ResearchSchema,
-      execute: async ({ topic }: z.infer<typeof ResearchSchema>) => {
+      parameters: z.object({
+        topic: z.string().describe("The research topic"),
+      }) as any,
+      execute: async ({ topic }: { topic: string }) => {
         // Safe ID access
         const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
 
