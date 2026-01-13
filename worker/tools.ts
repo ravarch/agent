@@ -1,6 +1,7 @@
 import { z } from "zod";
 import puppeteer from "@cloudflare/puppeteer";
 import { tool } from "ai";
+import { env } from "cloudflare:workers";
 
 // 1. Shared Environment Definition
 export interface Env {
