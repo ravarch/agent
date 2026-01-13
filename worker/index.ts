@@ -2,40 +2,50 @@ import { routeAgentRequest } from "agents";
 import { SuperAgent } from "./agent";
 import { ResearchWorkflow } from "./workflow";
 
-// Export the Durable Object Class
 export { SuperAgent, ResearchWorkflow };
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    // --- API: File Upload to Sandbox (R2) ---
+    // 1. File Upload API (Ingestion)
     if (url.pathname === "/api/upload" && request.method === "POST") {
-      try {
-        const formData = await request.formData();
-        const file = formData.get("file");
+      const formData = await request.formData();
+      const file = formData.get("file") as File;
+      
+      if (!file) return new Response("No file", { status: 400 });
 
-        if (!file || !(file instanceof File)) {
-          return new Response("No file uploaded", { status: 400 });
+      // A. Save to Object Storage (R2)
+      await env.FILES_BUCKET.put(file.name, file.stream(), {
+        httpMetadata: { contentType: file.type },
+      });
+
+      // B. Generate Embeddings for RAG (Vectorize)
+      // Only for text files for now
+      if (file.type.includes("text") || file.name.endsWith(".md")) {
+        const text = await file.text();
+        const chunks = text.match(/[\s\S]{1,500}/g) || []; // Simple chunking
+
+        const vectors = [];
+        for (let i = 0; i < Math.min(chunks.length, 20); i++) {
+           const chunk = chunks[i];
+           const embedding = await env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [chunk] });
+           // @ts-ignore
+           const values = embedding.data ? embedding.data[0] : embedding[0];
+           vectors.push({
+             id: `${file.name}-${i}`,
+             values: values,
+             metadata: { filename: file.name, text: chunk }
+           });
         }
-
-        // Save to the Agent's Sandbox Bucket
-        await env.FILES_BUCKET.put(file.name, file.stream(), {
-          httpMetadata: { contentType: file.type },
-        });
-
-        return Response.json({ 
-          success: true, 
-          filename: file.name, 
-          size: file.size 
-        });
-      } catch (err) {
-        return new Response("Upload failed", { status: 500 });
+        
+        await env.VECTOR_DB.upsert(vectors);
       }
+
+      return Response.json({ success: true, filename: file.name });
     }
 
-    // --- Agent Routing ---
-    // Routes requests like /agents/super-agent/... to the Durable Object
+    // 2. Route Agent Requests
     return (
       (await routeAgentRequest(request, env)) ||
       new Response("Not Found", { status: 404 })
