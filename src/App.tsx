@@ -1,14 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAgent } from "agents/react";
 import { nanoid } from "nanoid";
 import { 
   Loader2, 
   Bot, 
   User, 
-  FileText, 
   Globe, 
   BrainCircuit,
-  StopCircle 
 } from "lucide-react";
 
 // AI UI Elements
@@ -22,8 +20,6 @@ import {
   Message, 
   MessageContent, 
   MessageResponse,
-  MessageActions,
-  MessageAction
 } from "@/components/ai-elements/message";
 import { 
   PromptInput, 
@@ -36,7 +32,6 @@ import {
   PromptInputActionMenuTrigger,
   PromptInputActionMenuContent
 } from "@/components/ai-elements/prompt-input";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // Assuming sonner is installed from package.json
 
 // Types
@@ -204,7 +199,7 @@ function App() {
                   </div>
                   <MessageContent>
                     {msg.type === "text" ? (
-                      <MessageResponse content={msg.content} />
+                      <MessageResponse>{msg.content}</MessageResponse>
                     ) : (
                       <div className="italic text-muted-foreground">{msg.content}</div>
                     )}
