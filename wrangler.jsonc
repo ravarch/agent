@@ -1,33 +1,52 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "agent",
-  "main": "worker/index.ts",
+  "name": "super-agent",
+  "main": "src/index.ts",
   "compatibility_date": "2025-02-04",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "not_found_handling": "single-page-application"
-  },
-  "observability": {
-    "enabled": true
-  },
-  // 1. Define the Durable Object Class
+  "assets": { "not_found_handling": "single-page-application" },
+  "observability": { "enabled": true },
+  
+  // 1. The Super Agent
   "durable_objects": {
     "bindings": [
-      {
-        "name": "ChatAgent",
-        "class_name": "ChatAgent"
-      }
+      { "name": "SuperAgent", "class_name": "SuperAgent" }
     ]
   },
-  // 2. Configure Migrations for the Durable Object
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["ChatAgent"]
+      "new_classes": ["SuperAgent"],
+      "new_sqlite_classes": ["SuperAgent"] // Enable SQL state
     }
   ],
-  // 3. Add the Workers AI Binding
+
+  // 2. AI & Gateway
   "ai": {
     "binding": "AI"
-  }
+  },
+
+  // 3. Long-term Memory (RAG)
+  "vectorize": [
+    { "binding": "VECTOR_DB", "index_name": "agent-memory" }
+  ],
+
+  // 4. File Storage (Sandbox)
+  "r2_buckets": [
+    { "binding": "FILES_BUCKET", "bucket_name": "agent-sandbox" }
+  ],
+
+  // 5. Web Browsing
+  "browser": {
+    "binding": "BROWSER"
+  },
+
+  // 6. Deep Research Workflow
+  "workflows": [
+    {
+      "name": "RESEARCH_WORKFLOW",
+      "binding": "RESEARCH_WORKFLOW",
+      "class_name": "ResearchWorkflow"
+    }
+  ]
 }
