@@ -38,7 +38,7 @@ export default {
                metadata: { filename: file.name, text: chunk }
              });
           }
-          // Cast to any to call upsert safely
+          // Use 'any' cast for vector DB
           await (env.VECTOR_DB as any).upsert(vectors);
         } catch (e) {
           console.error("Vectorize Error:", e);
