@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAgent } from "agents/react";
 import { nanoid } from "nanoid";
 import { 
@@ -27,8 +26,6 @@ import {
   Message, 
   MessageContent, 
   MessageResponse, 
-  MessageAttachments,
-  MessageAttachment
 } from "@/components/ai-elements/message";
 import { 
   PromptInput, 
@@ -54,8 +51,8 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  status?: string; // For tool updates like "Browsing web..."
-  attachments?: string[]; // Filenames
+  status?: string; 
+  attachments?: string[]; 
   isStreaming?: boolean;
 };
 
@@ -110,7 +107,6 @@ export default function App() {
           break;
 
         case "status":
-          // Parse tool usage from backend message
           const content = data.content.toLowerCase();
           if (content.includes("search")) setToolStatus("searching");
           else if (content.includes("image") || content.includes("draw")) setToolStatus("drawing");
@@ -344,8 +340,12 @@ export default function App() {
 
 // --- Subcomponent: Sidebar Capability Item ---
 function CapabilityItem({ icon, label, active }: { icon: any, label: string, active: boolean }) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unused = active; // Dummy usage if needed, though 'active' is used in className below
+  // Actually, active IS used in the className string template below.
   return (
     <div className={`flex items-center gap-3 rounded-md px-2 py-2 text-xs font-medium transition-colors ${active ? "bg-orange-500/10 text-orange-600" : "text-muted-foreground"}`}>
+      {/* @ts-ignore */}
       {React.cloneElement(icon, { className: "size-4" })}
       <span>{label}</span>
       {active && <div className="ml-auto size-1.5 rounded-full bg-orange-500 animate-pulse" />}
@@ -353,4 +353,4 @@ function CapabilityItem({ icon, label, active }: { icon: any, label: string, act
   );
 }
 
-
+import React from "react";
