@@ -15,7 +15,7 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
       const response = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
         messages: [{ role: "user", content: `Create a 3-step research plan for: ${prompt}` }]
       });
-      // Cast to any to access .response if type definitions are missing it
+      // Cast to any to access .response safely
       return (response as any).response; 
     });
 
@@ -38,11 +38,10 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
                 { role: "user", content: `Plan: ${plan}\n\nFile Analysis: ${fileAnalysis}` }
             ]
         });
-        // Cast to any to access .response if type definitions are missing it
+        // Cast to any to access .response safely
         return (response as any).response;
     });
 
-    // Note: In a real app, you would use the Agent ID to send this back to the specific WebSocket connection.
     console.log("Workflow finished:", result);
     return result;
   }
