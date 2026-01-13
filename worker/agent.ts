@@ -32,6 +32,7 @@ export class SuperAgent extends Agent<Env> {
 
     const systemPrompt = `You are a helpful Super Agent.
     Context from files: ${context}
+    
     Use tools for Searching, Drawing, or Researching.`;
 
     // 2. Stream Response
