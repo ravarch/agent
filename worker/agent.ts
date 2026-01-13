@@ -41,7 +41,7 @@ export class SuperAgent extends Agent<Env> {
     // Retrieve context from Vectorize
     const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [prompt] });
     
-    // Fixed: Removed @ts-expect-error since casting to any suppresses the error anyway
+    // Type casting to handle potential response structure variations
     const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
     
     const matches = await this.env.VECTOR_DB.query(queryVector, { topK: 3 });
@@ -54,11 +54,7 @@ export class SuperAgent extends Agent<Env> {
         { role: "user", content: prompt }
       ],
       stream: true,
-      // Use AI Gateway for caching/monitoring
-      gateway: {
-        id: this.env.AI_GATEWAY_ID,
-        skipCache: false
-      }
+      // Gateway usage removed for direct connection
     });
 
     this.streamResponse(connection, stream);
@@ -72,8 +68,7 @@ export class SuperAgent extends Agent<Env> {
       const browser = await puppeteer.launch(this.env.BROWSER);
       const page = await browser.newPage();
       
-      // Perform a search (mocked via direct navigation or search engine)
-      // For this example, we visit a specific relevant page or generic search
+      // Perform a search
       await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
       
       // Extract results
@@ -104,6 +99,7 @@ export class SuperAgent extends Agent<Env> {
       params: { 
         prompt, 
         connectionId: connection.id, // Pass connection ID to notify user later
+        // Use this.ctx.id.toString() instead of this.id
         agentId: this.ctx.id.toString() 
       }
     });
