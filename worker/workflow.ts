@@ -2,6 +2,11 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import puppeteer from "@cloudflare/puppeteer";
 import { type Env } from "./tools";
 
+// Interface for the Agent to satisfy strict typing on the Stub
+interface SuperAgentType {
+  broadcastResult(content: string): Promise<void>;
+}
+
 type Params = {
   topic: string;
   agentId: string;
@@ -43,7 +48,9 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
     await this.env.FILES_BUCKET.put(filename, report);
 
     const id = this.env.SuperAgent.idFromString(agentId);
-    const agentStub = this.env.SuperAgent.get(id);
+    // Cast stub to our interface
+    const agentStub = this.env.SuperAgent.get(id) as unknown as SuperAgentType;
+    
     await agentStub.broadcastResult(`Research Finished! Saved as ${filename}.\n\n${report.substring(0, 150)}...`);
     
     return report;
