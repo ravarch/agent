@@ -24,8 +24,9 @@ export class SuperAgent extends Agent<Env> {
     try {
         const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [data.prompt] });
         const vectors = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
-        const matches = await this.env.VECTOR_DB.query(vectors, { topK: 3 });
-        context = matches.matches.map(m => m.metadata?.text).join("\n\n") || "None";
+        // Cast env.VECTOR_DB to any to allow method call if types are weird
+        const matches = await (this.env.VECTOR_DB as any).query(vectors, { topK: 3 });
+        context = matches.matches.map((m: any) => m.metadata?.text).join("\n\n") || "None";
     } catch (err) {
         console.error("RAG Error:", err);
     }
@@ -45,7 +46,7 @@ export class SuperAgent extends Agent<Env> {
         maxSteps: 5,
         system: systemPrompt,
         messages: this.messages.map(m => ({ role: m.role, content: m.content })),
-      });
+      } as any);
 
       let fullResponse = "";
       
