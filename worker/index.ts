@@ -16,10 +16,12 @@ export default {
       
       if (!file) return new Response("No file", { status: 400 });
 
+      // Save to R2
       await env.FILES_BUCKET.put(file.name, file.stream(), {
         httpMetadata: { contentType: file.type },
       });
 
+      // Index in Vectorize (Simple Chunking)
       if (file.type.includes("text") || file.name.endsWith(".md")) {
         const text = await file.text();
         const chunks = text.match(/[\s\S]{1,500}/g) || [];
@@ -35,14 +37,13 @@ export default {
              metadata: { filename: file.name, text: chunk }
            });
         }
-        
         await env.VECTOR_DB.upsert(vectors);
       }
 
       return Response.json({ success: true, filename: file.name });
     }
 
-    // Route Agent Requests
+    // Route to Agent
     return (
       (await routeAgentRequest(request, env)) ||
       new Response("Not Found", { status: 404 })
