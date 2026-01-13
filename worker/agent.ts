@@ -40,8 +40,9 @@ export class SuperAgent extends Agent<Env> {
   async chat(connection: Connection, prompt: string) {
     // Retrieve context from Vectorize
     const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [prompt] });
-    // @ts-expect-error - AI output type mismatch workaround
-    const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : embeddings[0];
+    
+    // Fixed: Removed @ts-expect-error since casting to any suppresses the error anyway
+    const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
     
     const matches = await this.env.VECTOR_DB.query(queryVector, { topK: 3 });
     const context = matches.matches.map(m => m.metadata?.text).join("\n");
