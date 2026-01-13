@@ -3,7 +3,10 @@
   "name": "agent",
   "main": "worker/index.ts",
   "compatibility_date": "2025-02-04",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "nodejs_compat_populate_process_env"
+  ],
   "assets": {
     "not_found_handling": "single-page-application",
     "binding": "ASSETS"
