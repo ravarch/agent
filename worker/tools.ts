@@ -3,31 +3,32 @@ import puppeteer from "@cloudflare/puppeteer";
 import { Agent } from "agents";
 import { tool } from "ai";
 
-// Shared Environment Definition
+// 1. Shared Environment Definition
 export interface Env {
   AI: any;
-  BROWSER: any; // Puppeteer Browser Binding
+  BROWSER: any; 
   FILES_BUCKET: R2Bucket;
   VECTOR_DB: VectorizeIndex;
   RESEARCH_WORKFLOW: Workflow;
-  SuperAgent: DurableObjectNamespace; // Needed for Workflow -> Agent communication
+  // Required by agents SDK and workflow
+  SuperAgent: DurableObjectNamespace; 
+  AI_GATEWAY_ID?: string; // Added to satisfy Cloudflare.Env constraint
 }
 
 export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
   return {
-    // 1. Web Search
+    // Tool 1: Web Search
     web_search: tool({
       description: "Search the web for real-time information.",
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
-      execute: async ({ query }: { query: string }) => {
+      execute: async ({ query }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
           await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
           
-          // Basic extraction
           const text = await page.$eval("body", (el) => el.innerText);
           await browser.close();
           return `Search Results: ${text.substring(0, 2000)}...`;
@@ -37,26 +38,26 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       },
     }),
 
-    // 2. Image Generation
+    // Tool 2: Image Generation
     generate_image: tool({
       description: "Generate an image based on a prompt.",
       parameters: z.object({
         prompt: z.string().describe("Visual description of the image"),
       }),
-      execute: async ({ prompt }: { prompt: string }) => {
+      execute: async ({ prompt }) => {
         const inputs = { prompt, steps: 4 };
         const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
         return `![Generated Image](data:image/jpeg;base64,${response.image})`;
       },
     }),
 
-    // 3. File Reader
+    // Tool 3: File Reader
     read_file: tool({
       description: "Read the full content of a specific file from the sandbox.",
       parameters: z.object({
         filename: z.string().describe("The exact name of the file to read"),
       }),
-      execute: async ({ filename }: { filename: string }) => {
+      execute: async ({ filename }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
@@ -64,17 +65,21 @@ export const getTools = (env: Env, agent: Agent<Env>, connectionId: string) => {
       },
     }),
 
-    // 4. Workflow Trigger
+    // Tool 4: Workflow Trigger
     start_deep_research: tool({
       description: "Start a long-running deep research workflow.",
       parameters: z.object({
         topic: z.string().describe("The research topic"),
       }),
-      execute: async ({ topic }: { topic: string }) => {
+      execute: async ({ topic }) => {
+        // Fix: Use agent.state.id for Durable Objects
+        // @ts-ignore - 'state' exists on DurableObject, even if Agent type hides it
+        const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
+
         const run = await env.RESEARCH_WORKFLOW.create({
           params: { 
             topic, 
-            agentId: agent.id.toString(),
+            agentId, 
             connectionId 
           }
         });
