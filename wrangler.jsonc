@@ -37,6 +37,13 @@
       "index_name": "ai-search-agent"
     }
   ],
+"d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agent-db",
+      "database_id": "959bb327-36ca-41f9-938a-7632d84957de"
+    }
+  ],
   // 4. R2 Bucket (File Sandbox)
   "r2_buckets": [
     {
