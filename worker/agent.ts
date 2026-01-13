@@ -41,7 +41,7 @@ export class SuperAgent extends Agent<Env> {
     // Retrieve context from Vectorize
     const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [prompt] });
     
-    // Type casting to handle potential response structure variations
+    // Handle potential response structure variations safely
     const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
     
     const matches = await this.env.VECTOR_DB.query(queryVector, { topK: 3 });
@@ -54,7 +54,6 @@ export class SuperAgent extends Agent<Env> {
         { role: "user", content: prompt }
       ],
       stream: true,
-      // Gateway usage removed for direct connection
     });
 
     this.streamResponse(connection, stream);
