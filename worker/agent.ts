@@ -24,7 +24,7 @@ export class SuperAgent extends Agent<Env> {
     try {
         const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [data.prompt] });
         const vectors = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
-        // Cast env.VECTOR_DB to any to allow method call if types are weird
+        // Cast to any to call methods safely
         const matches = await (this.env.VECTOR_DB as any).query(vectors, { topK: 3 });
         context = matches.matches.map((m: any) => m.metadata?.text).join("\n\n") || "None";
     } catch (err) {
@@ -40,6 +40,8 @@ export class SuperAgent extends Agent<Env> {
     const workersai = createWorkersAI({ binding: this.env.AI });
 
     try {
+      // We cast the options object to 'any' to bypass strict type checking on 'maxSteps'
+      // which often fails due to complex Tool generic inference in the Vercel AI SDK.
       const result = await streamText({
         model: workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast" as any),
         tools: getTools(this.env, this, connection.id),
