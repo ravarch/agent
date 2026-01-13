@@ -15,7 +15,7 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
       const response = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
         messages: [{ role: "user", content: `Create a 3-step research plan for: ${prompt}` }]
       });
-      // @ts-expect-error - AI output type mismatch workaround
+      // Cast to any to access .response if type definitions are missing it
       return (response as any).response; 
     });
 
@@ -38,7 +38,7 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
                 { role: "user", content: `Plan: ${plan}\n\nFile Analysis: ${fileAnalysis}` }
             ]
         });
-        // @ts-expect-error - AI output type mismatch workaround
+        // Cast to any to access .response if type definitions are missing it
         return (response as any).response;
     });
 
