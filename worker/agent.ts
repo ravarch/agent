@@ -1,117 +1,84 @@
 import { Agent, type Connection, type WSMessage } from "agents";
-import puppeteer from "@cloudflare/puppeteer";
+import { streamText, convertToCoreMessages } from "ai";
+import { createWorkersAI } from "workers-ai-provider";
+import { getTools, type Env } from "./tools";
 
 export class SuperAgent extends Agent<Env> {
-  // Define our "System Prompt" with capabilities
-  readonly systemPrompt = `You are a Super Agent with Gemini-level capabilities.
-  You can:
-  1. Browse the web for real-time info.
-  2. access user files in your R2 sandbox.
-  3. Start deep research workflows for complex queries.
-  
-  Always check your tools before answering.`;
+  // Store chat history in the Durable Object's memory (SQL or In-Memory)
+  // For simplicity, we use an in-memory array, but in prod use SQLite
+  messages: any[] = [];
 
   async onConnect(connection: Connection) {
-    connection.send(JSON.stringify({ role: "system", content: "Super Agent Online ⚡️" }));
+    // Send initial greeting
+    connection.send(JSON.stringify({ 
+      role: "system", 
+      content: "Super Agent Online ⚡️. I can Search, Draw, Read Files, and Research." 
+    }));
   }
 
   async onMessage(connection: Connection, message: WSMessage) {
-    // 1. Parse Input
     const data = typeof message === "string" ? JSON.parse(message) : message;
-    const userPrompt = data.prompt;
-
-    // 2. Check for "Deep Work" request (Heuristic or intent detection)
-    if (userPrompt.toLowerCase().includes("deep research") || userPrompt.toLowerCase().includes("analyze file")) {
-      await this.triggerWorkflow(connection, userPrompt);
-      return;
-    }
-
-    // 3. Check for Web Browsing
-    if (userPrompt.toLowerCase().includes("search") || userPrompt.toLowerCase().includes("latest")) {
-      await this.browseWeb(connection, userPrompt);
-      return;
-    }
-
-    // 4. Default: Standard Chat with RAG
-    await this.chat(connection, userPrompt);
-  }
-
-  // --- CAPABILITY: Standard Chat + RAG ---
-  async chat(connection: Connection, prompt: string) {
-    // Retrieve context from Vectorize
-    const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [prompt] });
     
-    // Handle potential response structure variations safely
-    const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : (embeddings as any)[0];
+    // Add User Message to History
+    this.messages.push({ role: "user", content: data.prompt });
+
+    // 1. RAG Retrieval Step (Context Injection)
+    // We check if the prompt matches any uploaded files
+    const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [data.prompt] });
+    // @ts-ignore
+    const vectors = embeddings.data ? embeddings.data[0] : embeddings[0];
+    const matches = await this.env.VECTOR_DB.query(vectors, { topK: 3 });
+    const context = matches.matches.map(m => m.metadata?.text).join("\n\n");
+
+    const systemPrompt = `You are a Super Agent. 
+    Context from uploaded files: ${context || "No relevant files found."}
     
-    const matches = await this.env.VECTOR_DB.query(queryVector, { topK: 3 });
-    const context = matches.matches.map(m => m.metadata?.text).join("\n");
+    Always use tools when you need to perform actions (Search, Draw, Research).
+    Return answers in Markdown.`;
 
-    const stream = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
-      messages: [
-        { role: "system", content: this.systemPrompt },
-        { role: "system", content: `Context: ${context}` },
-        { role: "user", content: prompt }
-      ],
-      stream: true,
-    });
-
-    this.streamResponse(connection, stream);
-  }
-
-  // --- CAPABILITY: Web Browsing ---
-  async browseWeb(connection: Connection, query: string) {
-    connection.send(JSON.stringify({ type: "status", content: "Browsing the web..." }));
+    // 2. Run the AI Loop with Tools
+    const workersai = createWorkersAI({ binding: this.env.AI });
 
     try {
-      const browser = await puppeteer.launch(this.env.BROWSER);
-      const page = await browser.newPage();
-      
-      // Perform a search
-      await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
-      
-      // Extract results
-      const content = await page.$eval("body", (el) => el.innerText.substring(0, 2000));
-      await browser.close();
-
-      // Synthesize answer
-      const stream = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
-        messages: [
-            { role: "system", content: "Summarize the search results for the user." },
-            { role: "user", content: `Query: ${query}\n\nSearch Results: ${content}` }
-        ],
-        stream: true
+      const result = await streamText({
+        model: workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast"),
+        tools: getTools(this.env, this, connection.id),
+        maxSteps: 5, // Allow up to 5 tool round-trips (Search -> Read -> Search -> Answer)
+        system: systemPrompt,
+        messages: convertToCoreMessages(this.messages), // Pass history
       });
-      this.streamResponse(connection, stream);
+
+      // Stream the response back to the client
+      let fullResponse = "";
+      for await (const chunk of result.fullStream) {
+        // We can forward text deltas directly
+        if (chunk.type === 'text-delta') {
+          fullResponse += chunk.textDelta;
+          connection.send(JSON.stringify({ type: "text", content: chunk.textDelta }));
+        }
+        // Optional: Notify client about tool usage
+        if (chunk.type === 'tool-call') {
+          connection.send(JSON.stringify({ type: "status", content: `Using tool: ${chunk.toolName}...` }));
+        }
+      }
+
+      // Save Assistant Response to History
+      this.messages.push({ role: "assistant", content: fullResponse });
+      connection.send(JSON.stringify({ type: "stop" }));
 
     } catch (e) {
-      connection.send(JSON.stringify({ type: "error", content: "Failed to browse web." }));
+      connection.send(JSON.stringify({ type: "error", content: (e as Error).message }));
     }
   }
 
-  // --- CAPABILITY: Workflow Trigger ---
-  async triggerWorkflow(connection: Connection, prompt: string) {
-    connection.send(JSON.stringify({ type: "status", content: "Starting Deep Research Workflow..." }));
-
-    // Trigger the workflow
-    const run = await this.env.RESEARCH_WORKFLOW.create({
-      params: { 
-        prompt, 
-        connectionId: connection.id, // Pass connection ID to notify user later
-        // Use this.ctx.id.toString() instead of this.id
-        agentId: this.ctx.id.toString() 
-      }
-    });
-
-    connection.send(JSON.stringify({ type: "info", content: `Workflow ID: ${run.id} started.` }));
-  }
-
-  async streamResponse(connection: Connection, stream: any) {
-    for await (const chunk of stream) {
-        if (chunk.response) {
-            connection.send(JSON.stringify({ type: "text", content: chunk.response }));
-        }
+  // Capability to receive messages from Workflows
+  async broadcastResult(content: string) {
+    // Broadcast to all open connections (or filter by connectionId if stored)
+    this.server.getWebSocketAutoResponse()
+    // For manual broadcasting:
+    for (const conn of this.getConnections()) {
+        conn.send(JSON.stringify({ type: "text", content: `\n\n🔔 **Workflow Update:**\n${content}` }));
+        conn.send(JSON.stringify({ type: "stop" }));
     }
-    connection.send(JSON.stringify({ type: "stop" }));
   }
 }
