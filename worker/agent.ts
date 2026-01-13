@@ -40,7 +40,10 @@ export class SuperAgent extends Agent<Env> {
   async chat(connection: Connection, prompt: string) {
     // Retrieve context from Vectorize
     const embeddings = await this.env.AI.run("@cf/baai/bge-base-en-v1.5", { text: [prompt] });
-    const matches = await this.env.VECTOR_DB.query(embeddings.data[0], { topK: 3 });
+    // @ts-expect-error - AI output type mismatch workaround
+    const queryVector = (embeddings as any).data ? (embeddings as any).data[0] : embeddings[0];
+    
+    const matches = await this.env.VECTOR_DB.query(queryVector, { topK: 3 });
     const context = matches.matches.map(m => m.metadata?.text).join("\n");
 
     const stream = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
@@ -100,7 +103,7 @@ export class SuperAgent extends Agent<Env> {
       params: { 
         prompt, 
         connectionId: connection.id, // Pass connection ID to notify user later
-        agentId: this.id 
+        agentId: this.ctx.id.toString() 
       }
     });
 
