@@ -6,14 +6,13 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./worker/index");
 	}
 	interface Env {
-  SuperAgent: DurableObjectNamespace;
-  AI: Ai;
-  VECTOR_DB: Vectorize;
+  Suinterface Env {
+  AI: any;
+  BROWSER: any; 
   FILES_BUCKET: R2Bucket;
-  BROWSER: Fetcher;
+  VECTOR_DB: any; // Using 'any' to satisfy Cloudflare.Env constraint which expects Vectorize
   RESEARCH_WORKFLOW: Workflow;
-  
-  // Secrets
+  SuperAgent: DurableObjectNamespace; 
   AI_GATEWAY_ID: string;
 }
 }
