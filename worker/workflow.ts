@@ -14,7 +14,7 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
 
     // Step 1: Plan
     const urls = await step.do("plan-search", async () => {
-      return [`https://www.google.com/search?q=${encodeURIComponent("Detailed analysis of " + topic)}`];
+      return [`https://www.google.com/search?q=${encodeURIComponent(topic + " detailed analysis")}`];
     });
 
     // Step 2: Scrape
@@ -31,23 +31,20 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
     const report = await step.do("write-report", async () => {
       const response: any = await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
         messages: [
-          { role: "system", content: "You are a senior analyst. Write a markdown report." },
-          { role: "user", content: `Topic: ${topic}\n\nRaw Data: ${rawData}\n\nProduce a structured report.` }
+          { role: "system", content: "Write a professional markdown report." },
+          { role: "user", content: `Topic: ${topic}\nData: ${rawData}\n\nReport:` }
         ]
       });
       return response.response;
     });
 
-    // Step 4: Save
-    const filename = `Report-${Date.now()}.md`;
+    // Step 4: Save & Notify
+    const filename = `Research-${Date.now()}.md`;
     await this.env.FILES_BUCKET.put(filename, report);
 
-    // Step 5: Notify
     const id = this.env.SuperAgent.idFromString(agentId);
     const agentStub = this.env.SuperAgent.get(id);
-    
-    // Call the broadcast method on the Durable Object
-    await agentStub.broadcastResult(`Research complete! Saved to ${filename}.\n\nPreview:\n${report.substring(0, 200)}...`);
+    await agentStub.broadcastResult(`Research Finished! Saved as ${filename}.\n\n${report.substring(0, 150)}...`);
     
     return report;
   }
