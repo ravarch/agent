@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useAgent } from "agents/react";
 import { nanoid } from "nanoid";
@@ -352,4 +353,4 @@ function CapabilityItem({ icon, label, active }: { icon: any, label: string, act
   );
 }
 
-import React from "react";
+
