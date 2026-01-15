@@ -13,7 +13,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       className="prose prose-sm dark:prose-invert max-w-none break-words"
       remarkPlugins={[remarkGfm]}
       components={{
-        // Code Block Renderer
+        // Code Block
         code(props: any) {
           const { children, className, node, ...rest } = props;
           const match = /language-(\w+)/.exec(className || '');
@@ -33,38 +33,38 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </code>
           );
         },
-        // Image Renderer
+        // Images
         img(props: any) {
-          return (
-            <div className="relative my-4 overflow-hidden rounded-lg border bg-muted/50">
-                <img 
-                    src={props.src} 
-                    alt={props.alt} 
-                    className="w-full h-auto object-cover max-h-[500px] hover:scale-[1.02] transition-transform duration-500"
-                    loading="lazy"
-                />
-            </div>
-          );
-        },
-        // Table Renderer
-        table({ children }: { children: React.ReactNode }) {
             return (
-                <div className="my-4 w-full overflow-y-auto rounded-lg border">
-                    <table className="w-full text-sm text-left">{children}</table>
+                <div className="relative my-4 overflow-hidden rounded-lg border bg-muted/50">
+                    <img 
+                        src={props.src} 
+                        alt={props.alt} 
+                        className="w-full h-auto object-cover max-h-[500px] hover:scale-[1.02] transition-transform duration-500"
+                        loading="lazy"
+                    />
                 </div>
             );
         },
-        thead({ children }: { children: React.ReactNode }) {
-            return <thead className="bg-muted text-muted-foreground uppercase text-xs">{children}</thead>;
+        // Tables (Typed as any to prevent strict prop collisions)
+        table(props: any) {
+            return (
+                <div className="my-4 w-full overflow-y-auto rounded-lg border">
+                    <table className="w-full text-sm text-left" {...props} />
+                </div>
+            );
         },
-        th({ children }: { children: React.ReactNode }) {
-            return <th className="px-4 py-3 font-medium">{children}</th>;
+        thead(props: any) {
+            return <thead className="bg-muted text-muted-foreground uppercase text-xs" {...props} />;
         },
-        td({ children }: { children: React.ReactNode }) {
-            return <td className="px-4 py-2 border-t">{children}</td>;
+        th(props: any) {
+            return <th className="px-4 py-3 font-medium" {...props} />;
         },
-        a({ href, children }: { href?: string; children: React.ReactNode }) {
-            return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{children}</a>;
+        td(props: any) {
+            return <td className="px-4 py-2 border-t" {...props} />;
+        },
+        a(props: any) {
+            return <a target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline" {...props} />;
         }
       }}
     >
