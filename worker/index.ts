@@ -38,7 +38,6 @@ export default {
                metadata: { filename: file.name, text: chunk }
              });
           }
-          // Vectors MUST be used inside this block where it is defined
           await (env.VECTOR_DB as any).upsert(vectors);
         } catch (e) {
           console.error("Vectorize Error:", e);
