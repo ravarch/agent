@@ -21,11 +21,13 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
-      // Removed explicit type on destructuring to allow inference
-      execute: async ({ query }) => {
+      // FIX: Explicitly type the destructured argument
+      execute: async ({ query }: { query: string }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
+          // Set a standard user agent to avoid being blocked
+          await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
           await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
           
           const text = await page.$eval("body", (el) => el.innerText);
@@ -43,7 +45,8 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         prompt: z.string().describe("Visual description of the image"),
       }),
-      execute: async ({ prompt }) => {
+      // FIX: Explicitly type the destructured argument
+      execute: async ({ prompt }: { prompt: string }) => {
         try {
           // Use Flux-1 Schnell for speed
           const inputs = { prompt, steps: 4 };
@@ -61,7 +64,8 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         filename: z.string().describe("The exact name of the file to read"),
       }),
-      execute: async ({ filename }) => {
+      // FIX: Explicitly type the destructured argument
+      execute: async ({ filename }: { filename: string }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
@@ -75,7 +79,8 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         topic: z.string().describe("The research topic"),
       }),
-      execute: async ({ topic }) => {
+      // FIX: Explicitly type the destructured argument
+      execute: async ({ topic }: { topic: string }) => {
         const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
 
         const run = await env.RESEARCH_WORKFLOW.create({
