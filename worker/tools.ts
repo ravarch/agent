@@ -3,6 +3,7 @@ import puppeteer from "@cloudflare/puppeteer";
 import { tool } from "ai";
 
 export interface Env {
+  // We type AI as 'any' to allow new methods like toMarkdown without strict TS blocking
   AI: any;
   BROWSER: any; 
   FILES_BUCKET: R2Bucket;
@@ -20,8 +21,8 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         query: z.string().describe("The search query"),
       }),
-      // FIX: Explicitly type the argument to satisfy TS overload
-      execute: async ({ query }: { query: string }) => {
+      // Removed explicit type on destructuring to allow inference
+      execute: async ({ query }) => {
         try {
           const browser = await puppeteer.launch(env.BROWSER);
           const page = await browser.newPage();
@@ -42,11 +43,15 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         prompt: z.string().describe("Visual description of the image"),
       }),
-      // FIX: Explicitly type the argument
-      execute: async ({ prompt }: { prompt: string }) => {
-        const inputs = { prompt, steps: 4 };
-        const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
-        return `![Generated Image](data:image/jpeg;base64,${response.image})`;
+      execute: async ({ prompt }) => {
+        try {
+          // Use Flux-1 Schnell for speed
+          const inputs = { prompt, steps: 4 };
+          const response: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", inputs);
+          return `![Generated Image](data:image/jpeg;base64,${response.image})`;
+        } catch (e) {
+          return `Image Generation Failed: ${(e as Error).message}`;
+        }
       },
     }),
 
@@ -56,8 +61,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         filename: z.string().describe("The exact name of the file to read"),
       }),
-      // FIX: Explicitly type the argument
-      execute: async ({ filename }: { filename: string }) => {
+      execute: async ({ filename }) => {
         const object = await env.FILES_BUCKET.get(filename);
         if (!object) return `File '${filename}' not found.`;
         const text = await object.text();
@@ -71,8 +75,7 @@ export const getTools = (env: Env, agent: any, connectionId: string) => {
       parameters: z.object({
         topic: z.string().describe("The research topic"),
       }),
-      // FIX: Explicitly type the argument
-      execute: async ({ topic }: { topic: string }) => {
+      execute: async ({ topic }) => {
         const agentId = agent.state?.id?.toString() || agent.id?.toString(); 
 
         const run = await env.RESEARCH_WORKFLOW.create({
